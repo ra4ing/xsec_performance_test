@@ -1,7 +1,6 @@
 /*
- *  Source file of a benchmark program involving repeated alphabethically
- *  ordering characters within a string for a set of random strings of a
- *  constant length.
+ *  Source file of a benchmark program involving repeated reversing a set
+ *  of random strings of a constant length.
  *
  *  This file is a part of the project "TCG Continuous Benchmarking".
  *
@@ -55,29 +54,29 @@ static void gen_random_string(char *chars, const int len)
 }
 
 /**
- * Order characters in a given string in alphabethical order.
- * @param str A string whose characters are to be reodered.
+ * Reverses the order of characters in a givem string.
+ * @param str A string to be reversed.
  */
-void reorder(char *str)
+void reverse(char *str)
 {
-    char temp;
-    int len = strlen(str);
+    char c, *left, *right;
 
-    for (size_t i = 0; i < len - 1; i++) {
-        for (size_t j = i + 1; j < len; j++) {
-            if (str[i] > str[j]) {
-                temp = str[i];
-                str[i] = str[j];
-                str[j] = temp;
-            }
-        }
+    if (!str || !*str) {
+        return;
+    }
+    for (left = str, right = str + strlen(str) - 1;
+         left < right;
+         left++, right--) {
+        c = *left;
+        *left = *right;
+        *right = c;
     }
 }
 
-void main (int argc, char* argv[])
+int main (int argc, char* argv[])
 {
     struct StringStruct random_strings[NUMBER_OF_RANDOM_STRINGS];
-    struct StringStruct strings_to_be_ordered[NUMBER_OF_RANDOM_STRINGS];
+    struct StringStruct strings_to_be_reversed[NUMBER_OF_RANDOM_STRINGS];
     int32_t number_of_repetitions = DEFAULT_NUMBER_OF_REPETITIONS;
     int32_t option;
 
@@ -117,22 +116,23 @@ void main (int argc, char* argv[])
     /* Perform reversing of a set of random strings multiple times */
     for (size_t j = 0; j < number_of_repetitions; j++) {
         /* Copy initial set of random strings to the set to be reversed */
-        memcpy(strings_to_be_ordered, random_strings,
+        memcpy(strings_to_be_reversed, random_strings,
                NUMBER_OF_RANDOM_STRINGS * (MAX_STRING_LENGHT + 1));
         /* Do actual reversing using previously defined reverse() */
         for (size_t i = 0; i < NUMBER_OF_RANDOM_STRINGS; i++) {
-            reorder(strings_to_be_ordered[i].chars);
+            reverse(strings_to_be_reversed[i].chars);
         }
     }
 
     /* Control printing */
-    printf("CONTROL RESULT: (reorder_string)\n");
+    printf("CONTROL RESULT: (reverse_string)\n");
     for (size_t i = 0; i < NUMBER_OF_CONTROL_PRINT_ITEMS; i++) {
         printf(" %s", random_strings[i].chars);
     }
     printf("\n");
     for (size_t i = 0; i < NUMBER_OF_CONTROL_PRINT_ITEMS; i++) {
-        printf(" %s", strings_to_be_ordered[i].chars);
+        printf(" %s", strings_to_be_reversed[i].chars);
     }
     printf("\n");
+    return 0;
 }

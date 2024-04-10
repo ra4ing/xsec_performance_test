@@ -54,7 +54,7 @@ static void gen_random_string(char *chars, const int len)
     chars[len] = 0;
 }
 
-void main (int argc, char* argv[])
+int main (int argc, char* argv[])
 {
     struct StringStruct random_strings[NUMBER_OF_RANDOM_STRINGS];
     struct StringStruct strings_to_be_uppercased[NUMBER_OF_RANDOM_STRINGS];
@@ -122,4 +122,5 @@ void main (int argc, char* argv[])
         printf(" %s", strings_to_be_uppercased[i].chars);
     }
     printf("\n");
+    return 0;
 }

@@ -1,6 +1,6 @@
 /*
- *  Source file of a benchmark program involving repeated reversing a set
- *  of random strings of a constant length.
+ *  Source file of a benchmark program involving obscuring a set of
+ *  random strings of a constant length by xoring them with 42.
  *
  *  This file is a part of the project "TCG Continuous Benchmarking".
  *
@@ -53,30 +53,10 @@ static void gen_random_string(char *chars, const int len)
     chars[len] = 0;
 }
 
-/**
- * Reverses the order of characters in a givem string.
- * @param str A string to be reversed.
- */
-void reverse(char *str)
-{
-    char c, *left, *right;
-
-    if (!str || !*str) {
-        return;
-    }
-    for (left = str, right = str + strlen(str) - 1;
-         left < right;
-         left++, right--) {
-        c = *left;
-        *left = *right;
-        *right = c;
-    }
-}
-
-void main (int argc, char* argv[])
+int main (int argc, char* argv[])
 {
     struct StringStruct random_strings[NUMBER_OF_RANDOM_STRINGS];
-    struct StringStruct strings_to_be_reversed[NUMBER_OF_RANDOM_STRINGS];
+    struct StringStruct strings_to_be_obscured[NUMBER_OF_RANDOM_STRINGS];
     int32_t number_of_repetitions = DEFAULT_NUMBER_OF_REPETITIONS;
     int32_t option;
 
@@ -113,25 +93,33 @@ void main (int argc, char* argv[])
         gen_random_string(random_strings[i].chars, MAX_STRING_LENGHT);
     }
 
-    /* Perform reversing of a set of random strings multiple times */
+    /* Perform uppercasing of a set of random strings multiple times */
     for (size_t j = 0; j < number_of_repetitions; j++) {
-        /* Copy initial set of random strings to the set to be reversed */
-        memcpy(strings_to_be_reversed, random_strings,
+        /* Copy initial set of random strings to the set to be obscured */
+        memcpy(strings_to_be_obscured, random_strings,
                NUMBER_OF_RANDOM_STRINGS * (MAX_STRING_LENGHT + 1));
-        /* Do actual reversing using previously defined reverse() */
+        /* Do actual changing case to uppercase */
         for (size_t i = 0; i < NUMBER_OF_RANDOM_STRINGS; i++) {
-            reverse(strings_to_be_reversed[i].chars);
+            int k = 0;
+  
+            while (strings_to_be_obscured[i].chars[k]) { 
+                char ch = strings_to_be_obscured[i].chars[k] ^ 42; 
+                memcpy((void *)strings_to_be_obscured[i].chars + k,
+                       &ch, 1);
+                k++; 
+            } 
         }
     }
 
     /* Control printing */
-    printf("CONTROL RESULT: (reverse_string)\n");
+    printf("CONTROL RESULT: (obscure_string)\n");
     for (size_t i = 0; i < NUMBER_OF_CONTROL_PRINT_ITEMS; i++) {
         printf(" %s", random_strings[i].chars);
     }
     printf("\n");
     for (size_t i = 0; i < NUMBER_OF_CONTROL_PRINT_ITEMS; i++) {
-        printf(" %s", strings_to_be_reversed[i].chars);
+        printf(" %s", strings_to_be_obscured[i].chars);
     }
     printf("\n");
+    return 0;
 }

@@ -20,9 +20,9 @@ class Compiler:
         target_path = self.target_dir + ("original" if file_type == "original" else "protected") + "/" + source_file
         output_path = self.output_dir + ("original" if file_type == "original" else "protected") + "/" + output_executable
 
-        process = subprocess.Popen(self.command + target_path + " -o " + output_path + " -lm", stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, cwd=self.work_dir, shell=True)
+        process = subprocess.Popen(self.command + target_path + " -o " + output_path + " -lm", stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, text=True, cwd=self.work_dir, shell=True)
         stdout, stderr = process.communicate()
-        print(stderr)
+        # print(stderr)
         if process.returncode != 0:
             print("* [Failed] " + source_file + "compiled failed.")
             self.failed.append(source_file)
@@ -33,6 +33,8 @@ class Compiler:
     
 
     def compile_all_benchmarks(self, file_type="original"):
+        self.success = []
+        self.failed = []
         print("Start compile...")
         base_dir = "benchmark/" + file_type
         for folder_name in os.listdir(base_dir):
