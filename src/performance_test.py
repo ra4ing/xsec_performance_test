@@ -2,11 +2,11 @@ import csv
 import os
 import re
 import subprocess
-
+import pandas as pd
 
 class PerformanceTester:
     def __init__(self, output_csv="performance_data.csv"):
-        self.command = "/usr/bin/time -v perf stat -e cycles,instructions,cache-misses,cache-references -r 1 qemu-riscv64 "
+        self.command = "/usr/bin/time -v perf stat -e cycles,instructions,cache-misses,cache-references -r 100 qemu-riscv64 "
         self.relative_work_dir = "../build/"
         self.output_csv = "../data/" + output_csv
         self.script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -14,13 +14,10 @@ class PerformanceTester:
 
         self.headers = ["File Name", "File Type", "Cycles", "Instructions", "Cache Misses", "Cache References", "Elapsed Time", "User Time", "System Time", "CPU Percentage", "Maximum resident set size (kbytes)"]
 
-
-        self.__reset_and_prepare_csv()
-
         self.success = []
         self.failed = []
 
-    def test(self, file_name, file_type="original", iterations=1):
+    def test(self, file_name, file_type="original", iterations=20):
         """
         Tests a given file multiple times, computes the average of the performance metrics, and writes the results to the CSV file.
         
@@ -38,7 +35,7 @@ class PerformanceTester:
         
         for _ in range(iterations):
             # Execute the test command
-            process = subprocess.Popen(self.command + self.relative_work_dir + file_type + "/" + file_name + " -n 1000", 
+            process = subprocess.Popen(self.command + self.relative_work_dir + file_type + "/" + file_name, 
                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, cwd=self.work_dir, shell=True)
             stdout, stderr = process.communicate()
 
@@ -78,7 +75,7 @@ class PerformanceTester:
             self.test(file_name, file_type)
         self.print_result()
 
-    def warm_up(self, file_name, file_type="original", iterations=10):
+    def warm_up(self, file_name, file_type="original", iterations=5):
         """
         Performs warm-up tests to minimize the impact of caching and other system states on test results.
 
