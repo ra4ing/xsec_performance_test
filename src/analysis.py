@@ -1,5 +1,6 @@
 import csv
 import os
+import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
@@ -56,35 +57,61 @@ class PerformanceComparison:
         file_names = sorted(set(self.data['File Name']))
         
         # Initialize a DataFrame to hold the metric values for original and protected types
-        comparison_data = pd.DataFrame(index=file_names, columns=['Original', 'Protected'])
+        comparison_data = pd.DataFrame(index=file_names, columns=['No_Extension', 'Original', 'Protected'])
         
         # Populate the DataFrame with metric values
         for file_name in file_names:
+            no_extension_value = self.data[(self.data['File Name'] == file_name) & (self.data['File Type'] == 'no_extension')][metric].values
             original_value = self.data[(self.data['File Name'] == file_name) & (self.data['File Type'] == 'original')][metric].values
             protected_value = self.data[(self.data['File Name'] == file_name) & (self.data['File Type'] == 'protected')][metric].values
+            comparison_data.at[file_name, 'No_Extension'] = no_extension_value[0] if len(no_extension_value) > 0 else None
             comparison_data.at[file_name, 'Original'] = original_value[0] if len(original_value) > 0 else None
             comparison_data.at[file_name, 'Protected'] = protected_value[0] if len(protected_value) > 0 else None
         
         # Calculate the performance degradation percentage
-        comparison_data['Degradation (%)'] = ((comparison_data['Protected'] - comparison_data['Original']) / comparison_data['Original']) * 100
+        # comparison_data['Degradation (%) Original'] = ((comparison_data['Protected'] - comparison_data['Original']) / comparison_data['Original']) * 100
+        comparison_data['Degradation (%) No_Extension vs Original'] = ((comparison_data['Original'] - comparison_data['No_Extension']) / comparison_data['No_Extension']) * 100
+        comparison_data['Degradation (%) No_Extension vs Protected'] = ((comparison_data['Protected'] - comparison_data['No_Extension']) / comparison_data['No_Extension']) * 100
+
         
         # Width of the bars in the bar chart
-        bar_width = 0.35
+        bar_width = 0.25
         
         # Plotting
         plt.figure(figsize=(14, 8))
-        indices = range(len(comparison_data))
-        plt.bar([i - bar_width/2 for i in indices], comparison_data['Original'], width=bar_width, label='Original', alpha=0.8)
-        plt.bar([i + bar_width/2 for i in indices], comparison_data['Protected'], width=bar_width, label='Protected', alpha=0.8)
+        indices = np.arange(len(comparison_data))
+        plt.bar(indices - bar_width, comparison_data['No_Extension'], width=bar_width, label='No Extension', alpha=0.8)
+        plt.bar(indices, comparison_data['Original'], width=bar_width, label='Original', alpha=0.8)
+        plt.bar(indices + bar_width, comparison_data['Protected'], width=bar_width, label='Protected', alpha=0.8)
+
+
         
         # Annotate performance degradation percentage
-        for idx, pct in enumerate(comparison_data['Degradation (%)']):
-            if not pd.isnull(pct):  # Check if pct is not NaN
-                plt.text(idx, max(comparison_data.loc[file_names[idx], ['Original', 'Protected']]), f'{pct:.2f}%', ha='center', va='bottom')
-        
+        for idx, (index, row) in enumerate(comparison_data.iterrows()):
+            base_height = max(row[['No_Extension', 'Original', 'Protected']].dropna())
+            # if not pd.isnull(row['Degradation (%) Original']):
+            #     plt.text(idx, base_height * 1.05, f'{row["Degradation (%) Original"]:.2f}%', ha='center', va='bottom', rotation=75)
+            if not pd.isnull(row['Degradation (%) No_Extension vs Original']):
+                plt.text(idx - bar_width, base_height * 1.10, f'{row["Degradation (%) No_Extension vs Original"]:.2f}%', ha='center', va='bottom', color='blue', rotation=75)
+            if not pd.isnull(row['Degradation (%) No_Extension vs Protected']):
+                plt.text(idx + bar_width, base_height * 1.15, f'{row["Degradation (%) No_Extension vs Protected"]:.2f}%', ha='center', va='bottom', color='red', rotation=75)
+
+        # plt.text(-0.5, base_height * 2.5, 'Red %: Degradation from No Extension to Protected', color='red', fontsize=10, verticalalignment='top')
+        # plt.text(-0.5, base_height * 2.6, 'Blue %: Degradation from No Extension to Original', color='blue', fontsize=10, verticalalignment='top')
+
+
         # Using logarithmic scale for y-axis if necessary
         plt.yscale('log')
-        
+
+        # Determine the position for the static annotation on a log scale
+        y_min, y_max = plt.ylim()
+        log_range = np.log10(y_max) - np.log10(y_min)  # Calculate the log range of the current plot
+        red_base_position = 10 ** (np.log10(y_max) - log_range * 0.03)
+        blue_base_position = 10 ** (np.log10(y_max) - log_range * 0.06)
+
+        plt.text(-1, red_base_position, 'Red %: Degradation from No Extension to Protected', color='red', fontsize=10, verticalalignment='top')
+        plt.text(-1, blue_base_position, 'Blue %: Degradation from No Extension to Original', color='blue', fontsize=10, verticalalignment='top')
+
         # Adding plot details
         plt.title(f'Comparison of {metric} Between Original and Protected Files')
         plt.xlabel('File Name')

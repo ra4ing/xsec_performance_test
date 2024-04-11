@@ -6,7 +6,8 @@ import pandas as pd
 
 class PerformanceTester:
     def __init__(self, output_csv="performance_data.csv"):
-        self.command = "/usr/bin/time -v perf stat -e cycles,instructions,cache-misses,cache-references -r 100 qemu-riscv64 "
+        self.sec_extension_command = "/usr/bin/time -v perf stat -e cycles,instructions,cache-misses,cache-references -r 100 qemu-riscv64 "
+        self.no_extension_command = "/usr/bin/time -v perf stat -e cycles,instructions,cache-misses,cache-references -r 100 $HOME/tools/evaluation/qemu/build/qemu-riscv64 "
         self.relative_work_dir = "../build/"
         self.output_csv = "../data/" + output_csv
         self.script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -17,7 +18,7 @@ class PerformanceTester:
         self.success = []
         self.failed = []
 
-    def test(self, file_name, file_type="original", iterations=20):
+    def test(self, file_name, file_type, iterations=20):
         """
         Tests a given file multiple times, computes the average of the performance metrics, and writes the results to the CSV file.
         
@@ -33,9 +34,15 @@ class PerformanceTester:
         }
         successful_runs = 0
         
+        command = ""
+        if file_type == "no_extension":
+            command = self.no_extension_command
+        else:
+            command = self.sec_extension_command
+
         for _ in range(iterations):
             # Execute the test command
-            process = subprocess.Popen(self.command + self.relative_work_dir + file_type + "/" + file_name, 
+            process = subprocess.Popen(command + self.relative_work_dir + file_type + "/" + file_name, 
                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, cwd=self.work_dir, shell=True)
             stdout, stderr = process.communicate()
 
@@ -65,17 +72,17 @@ class PerformanceTester:
             self.__write_to_csv(avg_metrics, file_name, file_type)
         
 
-    def test_all_benchmarks(self, file_type="original"):
+    def test_all_benchmarks(self, file_type):
         self.success = []
         self.failed = []
-        self.warm_up("coulomb_double")
+        self.warm_up("coulomb_double", file_type, 5)
         print("Start test...")
         base_dir = "build/" + file_type
         for file_name in os.listdir(base_dir):
             self.test(file_name, file_type)
         self.print_result()
 
-    def warm_up(self, file_name, file_type="original", iterations=5):
+    def warm_up(self, file_name, file_type, iterations=5):
         """
         Performs warm-up tests to minimize the impact of caching and other system states on test results.
 
@@ -83,7 +90,7 @@ class PerformanceTester:
         :param file_type: Type of test file (original or protected).
         :param iterations: The number of iterations for the warm-up test.
         """
-        warm_up_command = self.command + self.relative_work_dir + file_type + "/" + file_name
+        warm_up_command = self.sec_extension_command + self.relative_work_dir + file_type + "/" + file_name
         print(f"Starting warm-up for {file_name} ({iterations} iterations)...")
         for _ in range(iterations):
             subprocess.run(warm_up_command, shell=True, cwd=self.work_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -134,7 +141,7 @@ class PerformanceTester:
             writer.writerow(row)
 
 
-    def __reset_and_prepare_csv(self):
+    def reset_and_prepare_csv(self):
         # Delete old CSV file if it exists
         csv_path = os.path.join(self.work_dir, self.output_csv)
         if os.path.exists(csv_path):

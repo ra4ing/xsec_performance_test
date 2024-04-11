@@ -14,11 +14,11 @@ class Compiler:
         self.failed = []
 
 
-    def compile(self, source_file,  file_type="original"):
+    def compile(self, source_file,  file_type):
         # print(source_file)
         output_executable = os.path.splitext(os.path.basename(source_file))[0]
-        target_path = self.target_dir + ("original" if file_type == "original" else "protected") + "/" + source_file
-        output_path = self.output_dir + ("original" if file_type == "original" else "protected") + "/" + output_executable
+        target_path = self.target_dir + file_type + "/" + source_file
+        output_path = self.output_dir + file_type + "/" + output_executable
 
         process = subprocess.Popen(self.command + target_path + " -o " + output_path + " -lm", stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, text=True, cwd=self.work_dir, shell=True)
         stdout, stderr = process.communicate()
@@ -32,7 +32,7 @@ class Compiler:
         # self.__handle_output(stdout, stderr)
     
 
-    def compile_all_benchmarks(self, file_type="original"):
+    def compile_all_benchmarks(self, file_type):
         self.success = []
         self.failed = []
         print("Start compile...")
