@@ -6,8 +6,8 @@ import pandas as pd
 
 class PerformanceTester:
     def __init__(self, output_csv="performance_data.csv"):
-        self.sec_extension_command = "/usr/bin/time -v perf stat -e cycles,instructions,cache-misses,cache-references -r 100 qemu-riscv64 "
-        self.no_extension_command = "/usr/bin/time -v perf stat -e cycles,instructions,cache-misses,cache-references -r 100 $HOME/tools/evaluation/qemu/build/qemu-riscv64 "
+        self.sec_extension_command = "/usr/bin/time -v perf stat -e cycles,instructions,cache-misses,cache-references qemu-riscv64 "
+        self.no_extension_command = "/usr/bin/time -v perf stat -e cycles,instructions,cache-misses,cache-references $HOME/tools/evaluation/qemu/build/qemu-riscv64 "
         self.relative_work_dir = "../build/"
         self.output_csv = "../data/" + output_csv
         self.script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -18,7 +18,7 @@ class PerformanceTester:
         self.success = []
         self.failed = []
 
-    def test(self, file_name, file_type, iterations=20):
+    def test(self, file_name, file_type, iterations):
         """
         Tests a given file multiple times, computes the average of the performance metrics, and writes the results to the CSV file.
         
@@ -51,6 +51,9 @@ class PerformanceTester:
                 result = self.__parse_output(stdout, stderr)
                 successful_runs += 1
                 
+                cleaned_result = {key: float(value.replace(',', '')) for key, value in result.items() if value != "N/A"}
+                self.__save_iteration_data_to_csv(file_name, file_type, _+1, cleaned_result)
+                
                 # Sum up the metrics for averaging later
                 for key, value in result.items():
                     if value != "N/A":
@@ -75,14 +78,14 @@ class PerformanceTester:
     def test_all_benchmarks(self, file_type):
         self.success = []
         self.failed = []
-        self.warm_up("coulomb_double", file_type, 5)
+        self.warm_up("coulomb_double", file_type, 20)
         print("Start test...")
         base_dir = "build/" + file_type
         for file_name in os.listdir(base_dir):
-            self.test(file_name, file_type)
+            self.test(file_name, file_type, 100)
         self.print_result()
 
-    def warm_up(self, file_name, file_type, iterations=5):
+    def warm_up(self, file_name, file_type, iterations):
         """
         Performs warm-up tests to minimize the impact of caching and other system states on test results.
 
@@ -95,6 +98,7 @@ class PerformanceTester:
         for _ in range(iterations):
             subprocess.run(warm_up_command, shell=True, cwd=self.work_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         print("Warm-up completed.")
+
 
     def print_result(self):
         if self.success:
@@ -110,6 +114,7 @@ class PerformanceTester:
         else:
             print("no failed")    
         print()  
+
 
     def __parse_output(self, stdout, stderr):
         metrics_patterns = {
@@ -138,6 +143,30 @@ class PerformanceTester:
         row = [file_name, file_type] + [metrics.get(h, "N/A") for h in self.headers[2:]]
         with open(os.path.join(self.work_dir, self.output_csv), "a", newline="") as csvfile:
             writer = csv.writer(csvfile)
+            writer.writerow(row)
+
+    
+    def __save_iteration_data_to_csv(self, file_name, file_type,iteration, metrics):
+        """
+        Saves the metrics of a single iteration to a CSV file named after the file being tested.
+        
+        :param file_name: Name of the file being tested.
+        :param iteration: The iteration number of the current test.
+        :param metrics: A dictionary containing the performance metrics for the current iteration.
+        """
+        
+        csv_file_path = os.path.join(self.work_dir, f"../data/csv/{file_name}-{file_type}.csv")
+        file_exists = os.path.isfile(csv_file_path)
+        
+        with open(csv_file_path, 'a', newline='') as csvfile:
+            writer = csv.writer(csvfile)
+            if not file_exists:
+                # If the file does not exist, write the header first
+                header = ['Iteration'] + list(metrics.keys())
+                writer.writerow(header)
+            
+            # Write the metrics for the current iteration
+            row = [iteration] + list(metrics.values())
             writer.writerow(row)
 
 

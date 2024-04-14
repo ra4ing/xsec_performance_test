@@ -3,6 +3,7 @@ import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import seaborn as sns
 
 class PerformanceComparison:
     def __init__(self, csv_file_path):
@@ -13,6 +14,13 @@ class PerformanceComparison:
         self.csv_file_path = csv_file_path
         self.headers = ["File Name", "File Type", "Cycles", "Instructions", "Cache Misses", "Cache References", "Elapsed Time", "User Time", "System Time", "CPU Percentage", "Maximum resident set size (kbytes)"]
         self.data = pd.read_csv(csv_file_path)
+
+        self.script_dir = os.path.dirname(os.path.abspath(__file__))
+        self.work_dir = os.path.join(self.script_dir)
+        self.before_process_csv_path = os.path.join(self.work_dir, "../data/csv/")
+
+        # Ensure data is integrated from multiple CSV files
+        self.__integrate_data()
 
 
     def __write_to_csv(self, metrics, file_name, file_type):
@@ -121,6 +129,123 @@ class PerformanceComparison:
         plt.grid(True, which='both', axis='y', linestyle='--', linewidth=0.5)
         plt.tight_layout()
         # plt.show()
-        plt.savefig(f"data/Analysis of {metric}.png", dpi=1080)
+        plt.savefig(f"data/plt/Analysis of {metric}.png", dpi=1080)
 
 
+    def plot_boxplot_comparison(self, metric):
+        """
+        Plots a boxplot for each unique file name (without type), showing the distribution of the given metric for 'no_extension', 'original', 'protected' file types. The y-axis is displayed on a logarithmic scale.
+        """
+        print(metric)
+        
+        # Unique file names (without types)
+        file_names = sorted(set(self.integrated_data['File Name']))
+
+        # Prepare figure
+        plt.figure(figsize=(len(file_names) * 2, 6))
+
+        # Define colors for each file type
+        colors = ['#D7191C', '#2C7BB6', '#FABE2C']
+        file_types = ['no_extension', 'original', 'protected']
+
+        positions = np.arange(len(file_names)) * 4  # Spacing between groups of box plots
+
+        for i, file_name in enumerate(file_names):
+            # Data for the current file name across all file types
+            for j, file_type in enumerate(file_types):
+                data = self.integrated_data[(self.integrated_data['File Name'] == file_name) & (self.integrated_data['File Type'] == file_type)][metric].dropna()
+                pos = positions[i] + j
+                box = plt.boxplot(data, positions=[pos], widths=0.5, patch_artist=True,
+                                boxprops=dict(facecolor=colors[j], color=colors[j]),
+                                medianprops=dict(color='black'),
+                                whiskerprops=dict(color=colors[j]),
+                                capprops=dict(color=colors[j]),
+                                flierprops=dict(markeredgecolor=colors[j], marker='o', markersize=5))
+            
+        # Customizing the plot
+        plt.xticks(positions + 1, file_names, rotation=45, ha="right")
+        plt.ylabel(metric)
+        plt.title(f'Comparison of {metric} Across File Types')
+        plt.yscale('log')
+
+        # Adding legend manually
+        for i, file_type in enumerate(file_types):
+            plt.plot([], c=colors[i], label=file_type.capitalize(), marker='s', linestyle='None', markersize=10)
+        plt.legend()
+
+        plt.tight_layout()
+        plt.savefig(f"data/plt/Box Diagram of {metric}.png", dpi=1080)
+
+
+    def __integrate_data(self):
+        """
+        Reads and integrates data from multiple CSV files into a single DataFrame.
+        """
+        all_data = []
+
+        # Iterate over all CSV files in the specified directory
+        for file in os.listdir(self.before_process_csv_path):
+            if file.endswith(".csv"):
+                file_path = os.path.join(self.before_process_csv_path, file)
+                # Extracting file_name (without type) and file_type from the file name
+                base_name = file[:-4]  # Remove '.csv'
+                parts = base_name.rsplit('-', 1)  # Split on the last underscore to separate type
+                file_name, file_type = parts[0], parts[1]
+                
+                temp_df = pd.read_csv(file_path)
+                temp_df['File Name'] = file_name
+                temp_df['File Type'] = file_type
+                all_data.append(temp_df)
+
+        # Combine all data into a single DataFrame
+        self.integrated_data = pd.concat(all_data, ignore_index=True)
+
+
+    def visualize_performance_loss_distribution(self, metric):
+        """
+        Visualizes the distribution of performance loss percentage for 'original' and 'protected' compared to 'no_extension'.
+        :param integrated_data: DataFrame containing integrated data with 'File Name', 'File Type', and the metric columns.
+        :param metric: The metric to evaluate performance loss on.
+        """
+        # Calculate performance loss percentage for each file name
+        performance_loss = []
+        file_names = self.integrated_data['File Name'].unique()
+        
+        for file_name in file_names:
+            no_ext_median = self.integrated_data[(self.integrated_data['File Name'] == file_name) & (self.integrated_data['File Type'] == 'no_extension')][metric].median()
+            for file_type in ['original', 'protected']:
+                file_median = self.integrated_data[(self.integrated_data['File Name'] == file_name) & (self.integrated_data['File Type'] == file_type)][metric].median()
+                loss_percentage = ((file_median - no_ext_median) / no_ext_median) * 100
+                performance_loss.append({'File Name': file_name, 'File Type':"Degratation of " + file_type + " from no_extension", 'Loss Percentage': loss_percentage})
+        
+        performance_loss_df = pd.DataFrame(performance_loss)
+        
+        # Plotting
+        plt.figure(figsize=(12, 6))
+        
+        # Histogram
+        plt.subplot(1, 2, 1)
+        sns.histplot(data=performance_loss_df, x='Loss Percentage', hue='File Type', kde=False, bins=20)
+        plt.title('Histogram of Loss Percentage')
+        plt.xlabel('Loss Percentage')
+        plt.ylabel('Frequency')
+
+                # Annotations of medians
+        medians_text = "Medium:\n"
+        for file_type in performance_loss_df['File Type'].unique():
+            median_val = performance_loss_df[performance_loss_df['File Type'] == file_type]['Loss Percentage'].median()
+            medians_text += f"{file_type}: {median_val:.2f}%\n"
+        
+        # Place medians in a text box on the plot
+        plt.gcf().text(0.2, 0.75, medians_text, fontsize=9, verticalalignment='center', bbox=dict(boxstyle="round,pad=0.5", fc="lightyellow", ec="black", lw=1, alpha=0.5))
+        
+        # Density Plot
+        plt.subplot(1, 2, 2)
+        ax = sns.kdeplot(data=performance_loss_df, x='Loss Percentage', hue='File Type', fill=True)
+        plt.title('Density Plot of Loss Percentage')
+        plt.xlabel('Loss Percentage')
+        plt.ylabel('Density')
+
+        plt.tight_layout()
+        plt.savefig(f"data/plt/Distribution Visualization of {metric}.png", dpi=1080)
+        # plt.show()

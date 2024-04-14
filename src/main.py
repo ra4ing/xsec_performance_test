@@ -20,15 +20,27 @@ def test():
 
 def analysis():
     analyser = PerformanceComparison("data/performance_data.csv")
-    analyser.calculate_and_save_averages("no_extension")
-    analyser.calculate_and_save_averages("original")
-    analyser.calculate_and_save_averages("protected")
-    analyser.plot_comparison("Cycles")
-    analyser.plot_comparison("Instructions")
+    analyser.plot_boxplot_comparison("Cache Misses")
+    analyser.plot_boxplot_comparison("Cache References")
+    analyser.plot_boxplot_comparison("Cycles")
+    analyser.plot_boxplot_comparison("Instructions")
+    analyser.plot_boxplot_comparison("Elapsed Time")
+    analyser.plot_boxplot_comparison("Maximum resident set size (kbytes)")
+    
+    analyser.visualize_performance_loss_distribution("Cache Misses")
+    analyser.visualize_performance_loss_distribution("Cache References")
+    analyser.visualize_performance_loss_distribution("Cycles")
+    analyser.visualize_performance_loss_distribution("Instructions")
+    analyser.visualize_performance_loss_distribution("Elapsed Time")
+    analyser.visualize_performance_loss_distribution("Maximum resident set size (kbytes)")
+
     analyser.plot_comparison("Cache Misses")
     analyser.plot_comparison("Cache References")
+    analyser.plot_comparison("Cycles")
+    analyser.plot_comparison("Instructions")
     analyser.plot_comparison("Elapsed Time")
     analyser.plot_comparison("Maximum resident set size (kbytes)")
+    
 
 if __name__ == '__main__':
     # compile()
